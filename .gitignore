@@ -1,0 +1,6 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+/Data/*
+/4.2.InterOrgaNet/ETMUN_Inter/DataProd/*
