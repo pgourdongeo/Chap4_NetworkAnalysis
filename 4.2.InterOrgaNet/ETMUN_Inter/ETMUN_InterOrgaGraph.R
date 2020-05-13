@@ -22,10 +22,12 @@ library(tidygraph)
 library(ggraph)
 library(ggrepel)
 library(flows)
-#Data 
 
+#Data 
+## Membership : table City-Asso. (for edges)
 MembershipEtmun <- readRDS("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN/ETMUN_Membership_GNidCorr.RDS")
 
+## Information on associations (for nodes)
 AssoEtmun <- read.csv2("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN/BD_ETMUN_OrganizationsWithMembersCities.csv", stringsAsFactors = F)
 
 
@@ -40,14 +42,18 @@ Network2modes <- graph.data.frame(edgelist)
 
 V(Network2modes)$type <- V(Network2modes)$name %in% edgelist[,1]
 
-# bi partite
+## bi partite graph
 
 NetProj <- bipartite.projection(Network2modes)
 
+# select the inter-asso projection 
+
 InterOrga <- NetProj$proj1
 
+## Add some info on nodes
+
 # Set full name
-InterOrga  <-  set_vertex_attr(InterOrga,"Label", index = AssoEtmun$Code, value = AssoEtmun$Name)
+InterOrga  <-  set_vertex_attr(InterOrga,"Label", index = AssoEtmun$Code, value = AssoEtmun$Name)## same as a joint
 # Set Short Name
 InterOrga <-  set_vertex_attr(InterOrga,"Acro", index = MembershipEtmun$Code_Network, value = MembershipEtmun$Network_Name)
 # Set Year of creation
@@ -55,7 +61,7 @@ InterOrga  <- set_vertex_attr(InterOrga,"Year", index = AssoEtmun$Code, value = 
 # Set country of the seat
 InterOrga  <- set_vertex_attr(InterOrga,"CountrySeat", index = AssoEtmun$Code, value = AssoEtmun$Country..secretariat.)
 
-#degree
+# compute degree
 
 V(InterOrga)$degree <- degree(InterOrga)
 V(InterOrga)$wdegree <- strength(InterOrga, vids = V(InterOrga), loops = F )
@@ -63,7 +69,7 @@ V(InterOrga)$wdegree <- strength(InterOrga, vids = V(InterOrga), loops = F )
 
 
 
-# Set size asso
+## Set size asso (nb of member cities)
 
 SizeAsso <- edgelist %>% group_by(Code_Network)%>% summarise(nMembers = n())
 InterOrga  <- set_vertex_attr(InterOrga,"SizeAsso", index = SizeAsso$Code_Network, value = SizeAsso$nMembers)
@@ -71,6 +77,7 @@ InterOrga  <- set_vertex_attr(InterOrga,"SizeAsso", index = SizeAsso$Code_Networ
 
 
 # transform into tidy graph
+
 TdInterOrga <- as_tbl_graph(InterOrga)
 
 ### ==== Graph representation ====
@@ -93,9 +100,11 @@ FilterG <- TdInterOrga %>%
   filter(weight > 20 ) %>% 
   activate(nodes) %>% 
   filter(!node_is_isolated())
-# change weight name
+
+# change weight name (problem because impossible to change width lab in ggraph)
 FilterG <- FilterG %>% activate(edges) %>% rename( "Poids\n(nb villes membres\nen commun)" = weight)
-#plot
+
+## plot the graph
 g1<-ggraph(FilterG, layout = 'linear', circular = TRUE) + 
   geom_edge_arc(aes(width = `Poids\n(nb villes membres\nen commun)`), alpha = 0.2)+
   geom_node_point(color = "orange", aes(size = degree)) + 
@@ -107,6 +116,7 @@ g1<-ggraph(FilterG, layout = 'linear', circular = TRUE) +
   theme_graph(base_family = 'Helvetica')
  g1 
 
+ #save
 ggsave(g1, filename = "OUT/GraphInterOrgaETMUN.pdf", width = 8.3, height = 5.8, units = "in" )
 
 
@@ -118,16 +128,16 @@ ggsave(g1, filename = "OUT/GraphInterOrgaETMUN.pdf", width = 8.3, height = 5.8, 
 InterOrga
 #Order = 59  , size 1230
 
-# density
+## density
 
 graph.density(InterOrga)# 0.72
 
-# degree distribution
+## degree distribution
 
 
 hist(V(InterOrga)$degree,breaks=10, xlab = "Degré des associations ETMUN", ylab = "Nombre d'associations", main = NA)
 
-#### Size Asso and Weigthed degree
+#### Relation between Size Asso and Weigthed degree
 
 Fgraph2 <- TdInterOrga %>% activate(nodes) %>% filter(SizeAsso < 500) # remove Covenant of Mayors (n= 10 000) and Climate Alliance (n =1742)
 
@@ -135,7 +145,7 @@ Fgraph2 <- fortify.tbl_graph(Fgraph2)
 ggplot(Fgraph2, aes(x = SizeAsso, y = wdegree))+
   geom_point()
 
-# regression
+## regression
 
 reg <- lm(wdegree ~ SizeAsso , data = Fgraph2)
 summary(reg)
@@ -187,6 +197,8 @@ regplot
 dev.off()
 
 
-### Dominant flows
+####==== Dominant flows =====##
+
+
 
 
