@@ -24,6 +24,7 @@ library(flows)
 library(GGally)
 library(patchwork)
 library(gghighlight)
+
 #Data 
 ## Membership : table City-Asso. (for edges)
 MembershipEtmun <- readRDS("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN/ETMUN_Membership_GNidCorr.RDS")
@@ -38,17 +39,30 @@ AssoEtmun <- read.csv2("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN
 
 
 edgelist <- MembershipEtmun %>% filter(!is.na(geonameId)) %>% select( geonameId, Code_Network)
-
+edgelist <- MembershipEtmun %>% 
+  filter(!is.na(geonameId)) %>% 
+  select( geonameId, Code_Network) %>% 
+  group_by(geonameId,Code_Network)%>% summarise(weight = n())
+edgelistnw <- edgelist %>% mutate(weight = 1) 
 #create network from edge list
-Network2modes <- graph.data.frame(edgelist)
 
+emnw <- edgelistnw  %>% 
+  pivot_wider(names_from = geonameId, values_from = weight, values_fill = list(weight = 0)) %>% 
+  column_to_rownames(var="Code_Network") %>% 
+  as.matrix()
+em2nw <- emnw[,colSums(emnw) > 1]
+Network2modes <- graph.data.frame(edgelist)
+Network2modes <- graph.incidence(em2nw , directed = F)
 #check
+
 is_bipartite(Network2modes)#FALSE
 
 # Bipartite network
+
 V(Network2modes)$type <- bipartite_mapping(Network2modes)$type 
 
 #check
+
 is_bipartite(Network2modes)#TRUE
 
 ## bi partite graph
@@ -57,23 +71,26 @@ NetProj <- bipartite.projection(Network2modes)
 
 # select the inter-asso projection 
 
-
-InterOrga <- NetProj$proj2
+InterCities <- NetProj$proj2
+InterOrga <- NetProj$proj1
 
 ## Add some info on nodes (just the ones we want)
 
 # Set full name
 InterOrga  <-  set_vertex_attr(InterOrga,"Label", index = AssoEtmun$Code, value = AssoEtmun$Name)## same as a joint
+
 # Set Short Name
 InterOrga <-  set_vertex_attr(InterOrga,"Acro", index = MembershipEtmun$Code_Network, value = MembershipEtmun$Network_Name)
+
 # Set Year of creation
 InterOrga  <- set_vertex_attr(InterOrga,"Year", index = AssoEtmun$Code, value = AssoEtmun$Date)
+
 # Set country of the seat
 InterOrga  <- set_vertex_attr(InterOrga,"CountrySeat", index = AssoEtmun$Code, value = AssoEtmun$Country..secretariat.)
 
 # Set AssoSize of asso 
 
-SizeAsso <- edgelist %>% group_by(Code_Network)%>% summarise(nMembers = n())
+SizeAsso <- edgelistnw %>% group_by(Code_Network)%>% summarise(nMembers = n())
 InterOrga  <- set_vertex_attr(InterOrga,"AssoSize", index = SizeAsso$Code_Network, value = SizeAsso$nMembers)
 # compute degree
 
@@ -81,7 +98,7 @@ V(InterOrga)$degree <- degree(InterOrga)
 V(InterOrga)$wdegree <- strength(InterOrga, vids = V(InterOrga), loops = F )
 
 
-# transform into tidy graph
+# transform into tidy graph and df
 
 TdInterOrga <- as_tbl_graph(InterOrga)
 DfInterOrga <- fortify.tbl_graph(TdInterOrga)
@@ -106,7 +123,7 @@ CompRelative_wdegree <- function(df, size , wdegree){
   
   df$norm_wdegree <- unlist(df[wdegree]/df$max_thwdegree)
   
-  Wdensity <- paste0("Density of weigted graph (proj one-mode of a 2modes graph) : " ,
+  Wdensity <- paste0("Density of weigted graph (proj 1-mode of a 2-modes graph) : " ,
                      round(sum(df[wdegree])/sum(df$max_thwdegree),4))
   print(Wdensity)
 
@@ -120,12 +137,16 @@ CompRelative_wdegree <- function(df, size , wdegree){
 
 DfInterOrga2  <- CompRelative_wdegree(df = DfInterOrga,
                             size = "AssoSize",
-                            wdegree = "wdegree")
+                            wdegree = "wdegree")#"Density of weigted graph (proj one-mode of a 2modes graph) : 0.1603"
+
 str(DfInterOrga2)
+#bivariate overlook of new variable
 DfInterOrga2 %>% keep(is.numeric) %>% filter(wdegree < 2000 & degree >2 & AssoSize < 1500)%>% select(-Year, - max_thwdegree) %>% ggpairs()
+
 # set normalized wdegree on the original graph
 InterOrga <- set_vertex_attr(InterOrga,"norm_wdegree", index = DfInterOrga2$name, value = unlist(DfInterOrga2$norm_wdegree))
 
+# Update tidy and df
 TdInterOrga <- as_tbl_graph(InterOrga)
 DfInterOrga <- fortify.tbl_graph(TdInterOrga) %>% mutate(norm_wdegree = unlist(norm_wdegree) )
 
@@ -153,25 +174,15 @@ edgesInterOrga <- edgesInterOrga %>% rowwise()%>% mutate(MinAsso = min(AssoSizef
 # Normalized weight
 edgesInterOrga <- edgesInterOrga %>% mutate(norm_weight = weight/ MinAsso)
 
+# Set normalized weight in orignal graph
 InterOrga <- set_edge_attr(InterOrga,"norm_weight", value = edgesInterOrga$norm_weight)
 
+# Update tidy and df
 TdInterOrga <- as_tbl_graph(InterOrga) %>% mutate(norm_wdegree = unlist(norm_wdegree) )
 DfInterOrga <- fortify.tbl_graph(TdInterOrga)
 ### ==== Graph representation ====
 
-## HeatMap
-
-palf <- colorRampPalette(c("yellow", "red")) 
-
-heatmap(netm, Rowv = NA, Colv = NA, col = palf(100),
-        scale="none", margins=c(10,10) )
-legend(x="bottomright", legend=c(min(netm), round(mean(netm),2), max(netm)), 
-       fill=colorRampPalette(c("yellow", "red"))(3))
-
-
 ## ggraph
-
-
 ## plot the graph unweighted
 g1<-ggraph(TdInterOrga, layout = 'kk') + 
   geom_edge_link(alpha = 0.2)+
@@ -183,7 +194,7 @@ g1<-ggraph(TdInterOrga, layout = 'kk') +
 
  
  ## plot the graph weighted
- 
+ # filter it for representation
  FilterG <- TdInterOrga %>% 
    activate(edges) %>% 
    filter(weight > 20 ) %>% 
@@ -193,6 +204,7 @@ g1<-ggraph(TdInterOrga, layout = 'kk') +
  # change weight name (problem because impossible to change width lab in ggraph)
  
  FilterG <-  FilterG %>% activate(edges) %>% rename( "Poids\n(nb villes membres\nen commun)" = weight)
+ #layout
  l <- layout_with_fr( FilterG, niter = 10000, weights = sqrt(E(FilterG)$`Poids\n(nb villes membres\nen commun)`)/1000)
 
   g2 <-ggraph(FilterG, layout = "kk") + 
@@ -220,10 +232,10 @@ skim(E(FilterG)$norm_weight)
 # discretize edges norm weight
 FilterG <- FilterG %>% 
   activate(edges) %>% 
-  mutate(strength_normw = case_when(norm_weight <= 0.06 ~ "1.Very Weak < 6%",
-                                    norm_weight > 0.06 & norm_weight <= 0.15 ~ "2.Weak < 15%",
-                                    norm_weight >0.15 & norm_weight <= 0.30 ~ "3.Strong < 30%",
-                                    norm_weight >0.30 & norm_weight <= 0.50 ~ "4.Very Strong < 50%",
+  mutate(strength_normw = case_when(norm_weight <= 0.05 ~ "1.Very Weak < 5%",
+                                    norm_weight > 0.05 & norm_weight <= 0.10 ~ "2.Weak < 15%",
+                                    norm_weight >0.10 & norm_weight <= 0.25 ~ "3.Strong < 30%",
+                                    norm_weight >0.25 & norm_weight <= 0.50 ~ "4.Very Strong < 50%",
                                     norm_weight > 0.50  ~ "5.Exceptionnal > 50%"))
 
 
@@ -271,7 +283,7 @@ fg2 <- ggraph(f2, layout = l) +
   geom_node_point(color = "indianred3", size = 3 )+ 
   geom_node_text(aes(label = Acro),repel = TRUE, size = 2.5)+
   labs(title = "Edges > 15%")+
-  theme_graph(base_family = 'Helvetica', foreground = "black", border = TRUE)
+  theme_graph(base_family = 'Helvetica', foreground = "grey60", border = TRUE)
 fg2
 
 #3
@@ -287,7 +299,7 @@ fg3 <- ggraph(f3, layout = l) +
   geom_node_point(color = "indianred3", size = 3 )+ 
   geom_node_text(aes(label = Acro),repel = TRUE, size = 2.5)+
   labs(title = "Edges > 30%")+
-  theme_graph(base_family = 'Helvetica', foreground = "black", border = TRUE)
+  theme_graph(base_family = 'Helvetica', foreground = "grey60", border = TRUE)
 fg3
 
 #4
@@ -303,7 +315,7 @@ fg4 <- ggraph(f4, layout = l) +
   geom_node_point(color = "indianred3", size = 3 )+ 
   geom_node_text(aes(label = Acro),repel = TRUE, size = 2.5)+
   labs(title = "Egdes > 50%")+
-  theme_graph(base_family = 'Helvetica', foreground = "black", border = TRUE)
+  theme_graph(base_family = 'Helvetica', foreground = "grey60", border = TRUE)
 fg4
 
 # 5
@@ -319,7 +331,7 @@ fg5 <- ggraph(f5, layout = l) +
   geom_node_text(aes(label = Acro),repel = TRUE, size = 2.5)+
   labs(title = "Edges > 70%",  
        caption = "Sources : ETMUN 2019. PG, 2020")+
-  theme_graph(base_family = 'Helvetica',foreground = "black", border = TRUE)
+  theme_graph(base_family = 'Helvetica',foreground = "grey60", border = TRUE)
 fg5
 
 # grid
@@ -332,7 +344,7 @@ ggsave(grid2, filename = "OUT/EtmunInterOrga_Norm_grid.pdf", width = 8.3, height
 ### ==== Main numerical outputs ====
 #Create df for classic ploting
 
-Fgraph2 <- TdInterOrga %>% activate(nodes) %>% filter(AssoSize < 500) %>% filter(degree>2) # remove Covenant of Mayors (n= 10 000) and Climate Alliance (n =1742) + WWCAM
+Fgraph2 <- TdInterOrga %>% activate(nodes) %>% filter(AssoSize < 500) %>% filter(degree>2) # remove Covenant of Mayors (size= 10 000) and Climate Alliance (size =1742) + WWCAM (degree =1)
 
 Fgraph2 <- fortify.tbl_graph(Fgraph2) 
 
@@ -538,7 +550,7 @@ modularity(filterG2, membership = V(filterG2)$louvain)
 l <- layout_with_fr(filterG2, niter = 10000, weights = sqrt(E(filterG2)$weight)/1000)
 l <- layout_with_kk(filterG2,weights = sqrt(E(filterG2)$weight)/10)
 
-g2<-ggraph(filterG2, layout = l) + 
+gsub2<-ggraph(filterG2, layout = l) + 
   geom_edge_link(aes(width = weight), alpha = 0.2)+
   geom_node_point( aes(size = relative_wdegree, color = as.factor(louvain))) + 
   geom_node_text(aes(label = Acro), repel = T, size = 2.5)+
@@ -547,7 +559,7 @@ g2<-ggraph(filterG2, layout = l) +
   labs(size = "Degré\n(nb d'associations\navec au moins\nune ville membre\nen commun)",
        caption = "Note : Seuls les liens supérieurs\nà 20 sont représentés\n\nSources : ETMUN 2019. PG, 2020")+
   theme_graph(base_family = 'Helvetica')
-g2 
+gsub2 
 ####==== Dominant flows =====##
 
 

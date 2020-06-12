@@ -1,0 +1,31 @@
+---
+title: "Workflow_Section4_2_Interorga_2modesNetworks"
+author: "Paul Gourdon"
+date: "12/06/2020"
+output: html_document
+---
+
+
+## Main goal and Data Description
+
+Build the first network analyses on bipartite organization-city graphs and inter-organizational analysis with a 1-mode projection.
+3 networks to study (data description chap2 and 3, repo chap 3): 
+
+(1) ETMUN : [ETMUN_Inter](ETMUN_Inter/)
+
+(2) URBACT : [URBACT_inter](URBACT_inter/)
+
+(3) ETMUN + EUCICOP : [EUCICOP_ETMUN_Inter](EUCICOP_ETMUN_Inter/)
+
+## General Workflow
+
+For each network, we proceed in 3 steps
+
+(1) Creation of relational data (igraph, incidence matrix) and main numerical summaries (dimensions, basic global indexes). Carrying out data filtering (level 1 cities or/and multiple affiliations of a city in the same organization)
+
+(2) 1-mode projection : work on graphs organisation-organisation. Compute a relative weight (edges) and a relative strenght (nodes), following the same logic as the degree normalizations specific to bipartite graphs. Graphs mapping.
+
+(3) Back to 2-modes network analysis : filtering out of some organizations (extreme values in step 2, thematic choices), compute local measures (centrality) and distribution of degree, try community detection
+
+(3) Bis : build geographical maps from community detection classifications data.
+
