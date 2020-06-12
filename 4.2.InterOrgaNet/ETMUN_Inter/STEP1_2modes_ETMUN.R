@@ -25,7 +25,8 @@ library(Matrix)
 MembershipEtmun <- readRDS("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN/ETMUN_Membership_GNidCorr.RDS")
 
 ## Information on associations (for nodes)
-AssoEtmun <- read.csv2("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN/BD_ETMUN_OrganizationsWithMembersCities.csv", stringsAsFactors = F)
+AssoEtmun <- read.csv2("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN/BD_ETMUN_OrganizationsWithMembersCities.csv", 
+                       stringsAsFactors = F)
 
 ### ==== CREATE NETWORK DATA ====
 
@@ -34,7 +35,8 @@ AssoEtmun <- read.csv2("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN
 edgelist <- MembershipEtmun %>% 
   filter(!is.na(geonameId)) %>% 
   select( geonameId, Code_Network) %>% 
-  group_by(geonameId,Code_Network)%>% summarise(weight = n()) # some weight > 1 because several members of an association are (representing the same city) in the same locality 
+  group_by(geonameId,Code_Network)%>% 
+  summarise(weight = n()) # some weight > 1 because several members of an association are (representing the same city) in the same locality 
 #(eg. Municipality of Barcelona + Metropolitan area of Barcelona)
 
 edgelistnw <- edgelist %>% mutate(weight = 1) # edgelist non weighted (transform weight > 1)

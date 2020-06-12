@@ -1,13 +1,12 @@
-############################### ETMUN Inter Organisations Network  ############
+############################### ETMUN Inter-Organisations Network  ############
 #                               
 #                          
-# DESCRIPTION : Création des données relationnelles à partir de la table
-#               des adhésions ETMUN. Projection 1mode du biparti
-#               Graphes asso = nombres de villes membres en commun
-#
+# DESCRIPTION :  Projection 1-mode du biparti
+#               Graphes asso = nombres de villes membres en commun.
+#               Représentations graphiques + calcul des indicateurs relatifs
 #
 # 
-############################################################################## PG mai 2020
+############################################################################## PG mai-juin 2020
 
 
 ### ==== Load Package and Date ====
@@ -88,7 +87,7 @@ InterOrga  <- set_vertex_attr(InterOrga,"Year", index = AssoEtmun$Code, value = 
 # Set country of the seat
 InterOrga  <- set_vertex_attr(InterOrga,"CountrySeat", index = AssoEtmun$Code, value = AssoEtmun$Country..secretariat.)
 
-# Set AssoSize of asso 
+# Set AssoSize of asso (equivalent of Asso degrees in the non-filtered, weighted, matrix = em in STEP1 )
 
 SizeAsso <- edgelistnw %>% group_by(Code_Network)%>% summarise(nMembers = n())
 InterOrga  <- set_vertex_attr(InterOrga,"AssoSize", index = SizeAsso$Code_Network, value = SizeAsso$nMembers)
@@ -103,7 +102,13 @@ V(InterOrga)$wdegree <- strength(InterOrga, vids = V(InterOrga), loops = F )
 TdInterOrga <- as_tbl_graph(InterOrga)
 DfInterOrga <- fortify.tbl_graph(TdInterOrga)
 
-# #compute relative wdegree 
+## compute relative wdegree 
+
+# NOTE : the idea is to make the weighted variables (weighted degrees for nodes and weights for edges) 
+# taking the theoretical maximum in case the original bipartite graph is complete. 
+# This theoretical maximum thus depends on the size (number of member cities) of each association. 
+# Example: The maximum weight of a edges between two associations A and B of sizes 10 and 20 
+# is 10 (the 10 member cities of association A are also members of association B).
 
 
 CompRelative_wdegree <- function(df, size , wdegree){
@@ -134,7 +139,7 @@ CompRelative_wdegree <- function(df, size , wdegree){
   
 }
 
-
+# Apply the function 
 DfInterOrga2  <- CompRelative_wdegree(df = DfInterOrga,
                             size = "AssoSize",
                             wdegree = "wdegree")#"Density of weigted graph (proj one-mode of a 2modes graph) : 0.1603"
@@ -364,10 +369,10 @@ hist(V(InterOrga)$degree,breaks=10, xlab = "Degré des associations ETMUN", ylab
 
 ## Univariate overlook
 
-Fgraph2 %>% keep(is.numeric) %>% 
+DfInterOrgaFiltered %>% keep(is.numeric) %>% 
   gather() %>% 
   ggplot(aes(value)) + 
-  facet_wrap(~ key, scales = "free") +
+  facet_wrap(~ key, scales = "free") + scale_y_continuous(trans = "log10")+
   geom_histogram()
 
 ## bivariate overlook
