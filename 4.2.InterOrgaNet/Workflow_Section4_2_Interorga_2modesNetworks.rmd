@@ -29,3 +29,7 @@ For each network, we proceed in 3 steps
 
 (3) Bis : build geographical maps from community detection classifications data.
 
+Here a sum-up
+
+![Image Title](workflow_interOrga.png){width=100%}
+
