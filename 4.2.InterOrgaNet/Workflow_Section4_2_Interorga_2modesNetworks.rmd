@@ -2,7 +2,9 @@
 title: "Workflow_Section4_2_Interorga_2modesNetworks"
 author: "Paul Gourdon"
 date: "12/06/2020"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 
