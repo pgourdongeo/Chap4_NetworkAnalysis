@@ -33,5 +33,5 @@ For each network, we proceed in 3 steps
 
 Here a sum-up
 
-![Image Title](workflow_interOrga.png){width=100%}
+![Chaine de traitements pour l'analyse des graphes bipartis et inter-organisations](workflow_interOrga.png){width=100%}
 
