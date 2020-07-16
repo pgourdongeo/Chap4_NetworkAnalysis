@@ -1,4 +1,4 @@
-############################### ETMUN bipartites Network  ###################
+############################### ETMUN bipartite Networks STEP 1 ###################
 #                               
 #                          
 # DESCRIPTION : Travail sur le graphe ETMUN (affiliation) biparti. 
@@ -21,15 +21,15 @@ library(Matrix)
 
 #####Data 
 
-## Membership : table City-Asso. (for edges)
-MembershipEtmun <- readRDS("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN/ETMUN_Membership_GNidCorr.RDS")
+## Membership : table City-Asso. (for edges). EUROPE frame filtered (check STEP0 in Data folder)
+MembershipEtmun <- readRDS("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN/ETMUN_Membership_europe.RDS")
 
 ## Information on associations (for nodes)
 AssoEtmun <- read.csv2("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN/BD_ETMUN_OrganizationsWithMembersCities.csv", 
                        stringsAsFactors = F)
 
 ### ==== CREATE NETWORK DATA ====
-
+MembershipEtmun$label <- paste(MembershipEtmun$geonameId, MembershipEtmun$asciiName,MembershipEtmun$CountryCode, sep = "_")
 ## Create matrix
 # edge list
 edgelist <- MembershipEtmun %>% 
@@ -44,6 +44,7 @@ edgelistnw <- edgelist %>% mutate(weight = 1) # edgelist non weighted (transform
 ## Convert edgelist into a matrix
 
 # with possible multiple affiliations of a city in the same organisation (weighted)
+#em = edges matrix
 em <- edgelist %>% 
   pivot_wider(names_from = geonameId, values_from = weight, values_fill = list(weight = 0)) %>% 
   column_to_rownames(var="Code_Network") %>% 
@@ -68,6 +69,20 @@ em2nw <- emnw[,colSums(emnw) > 1]
 
 em2nwf <- round((ncol(emnw)- ncol(em2nw))/ncol(emnw)*100, 0) # remove 88% of cities. Remain 1545 cities in more than one association
 
+# Remove WWCAM ASSO with only one european city
+
+assoremove <- "18332"
+
+#Filter out the association on the matrix that keep city of degree 1
+emnw <- emnw[!rownames(emnw) %in% assoremove, ]
+emnw <- emnw[,colSums(emnw) > 0]
+
+#Filter out the association on the matrix that keep city of more than 1 degree (only cities involved at least in 2 associations)
+em2nw <-  em2nw[!rownames(em2nw) %in% assoremove, ]
+em2nw <- em2nw[,colSums(em2nw) > 1]
+
+
+### Choice to work only on emnw and em2nw, that are binary matrices
 ### ==== COMPUTE BASIC GLOBAL INDEXES ====
 
 
@@ -84,32 +99,31 @@ graphlevelindex <- function(matrix){
   #order type 2
   nasso <- nrow(matrix)
   #Diameter
-  diam <- diameter(graph.incidence(matrix, directed = FALSE),directed = FALSE)
+  g <- graph.incidence(matrix, directed = FALSE)
+  diam <- diameter(g,directed = FALSE)
+  
+  # comp
+  
+  comp <- components(g)
+  
+  nbcomp <- comp$no
   #degrees
   meanDegCities <- mean(colSums(matrix != 0))
   medDegCities <- median(colSums(matrix != 0))
   meanDegAsso <- mean(rowSums(matrix != 0))
   medDegAsso <- median(rowSums(matrix != 0))
   
-  # weighted degrees
-  
-  meanwDegCities <- mean(colSums(matrix))
-  medwDegCities <- median(colSums(matrix))
-  meanwDegAsso <- mean(rowSums(matrix))
-  medwDegAsso <- median(rowSums(matrix))
   
   result <- data.frame(Densité = density, 
                        Diamètre = diam,
                        Taille = nbliens,
+                       NbComp = nbcomp,
                        NbVilles = ncities,
                        NbAssos = nasso,
                        MeanDegreeCity =  meanDegCities,
                        MedDegreeCity =  medDegCities,
                        MeanDegreeAsso = meanDegAsso,
-                       MedDegreeAsso = medDegAsso,
-                       MeanwDegreeCity = meanwDegCities,
-                       MeanwDegreeAsso = meanwDegAsso
-  )
+                       MedDegreeAsso = medDegAsso)
   return(result)
 }
 
@@ -131,50 +145,57 @@ dimem2nw <- graphlevelindex(em2nw)
 
 
 ## Results in a df
-dfnetworklevel <- rbind(dimem, dimem2, dimemnw, dimem2nw) %>% mutate_all(~round(., digits = 3))
+dfnetworklevel <- rbind(dimemnw, dimem2nw) %>% mutate_all(~round(., digits = 3))
 
 #¨Preparation dataframe for export in french
 
-Varnames <- c("Densité",
+
+
+NameFilter <- c("Filtrage des doublons\ndans les villes membres\nde chaque association",
+                "Filtrage des doublons\ndans les villes membres\nde chaque association\n&\nFiltrage des villes\nprésentes dans une seule\nassociation") 
+
+TypeGraph <- c("Binaire", "Binaire")
+TypeGraph
+
+# Pct cities filtered
+Citiesfilter <- c(0,em2nwf)
+
+#Insert description of filtering
+dfnetworklevel <- dfnetworklevel %>% mutate(TypeGraph = TypeGraph) %>%
+  mutate(Filtre = NameFilter) %>% 
+  mutate(Citiesfilter = Citiesfilter)%>%
+  mutate(NomMatrix = c("emnw", "em2nw"))%>%
+  select(Filtre,NomMatrix,TypeGraph,Densité, Diamètre,NbComp, Taille,NbVilles, Citiesfilter, everything())
+
+Varnames <- c("Filtrage du graphe",
+              "Nom de la matrice",
+              "Type de matrice",
+              "Densité",
               "Diamètre",
+              "Nb composantes",
               "Taille\n(nb de liens)",
               "Nb de Villes",
+              "Pct villes filtrées",
               "Nb d'associations",
               "Degré moyen\ndes villes",
               "Degré médian\ndes villes",
               "Degré moyen\ndes associations",
-              "Degré médian\ndes associations",
-              "Degré pondéré moyen\ndes villes",
-              "Degré pondéré moyen\ndes associations"
-)
+              "Degré médian\ndes associations")
 
 colnames(dfnetworklevel) <- Varnames
 
-NameFilter <- c("Aucun filtrage", 
-                "Filtrage des villes\nprésentes dans une seule\nassociation",
-                "Filtrage des doublons\ndans les villes membres\nde chaque association",
-                "Filtrage des doublons\ndans les villes membres\nde chaque association\n&\nFiltrage des villes\nprésentes dans une seule\nassociation") 
 
-TypeGraph <- c("Valué", "Valué", "Binaire", "Binaire")
-TypeGraph
 
-# Pct cities filtered
-Citiesfilter <- c(0,em2f,0,em2nwf)
-
-#Insert description of filtering
-dfnetworklevel <- dfnetworklevel %>% mutate('Type de graphe' = TypeGraph) %>%
-  mutate(Filtre = NameFilter) %>% 
-  select(Filtre,'Type de graphe', everything())%>%
-  rename("Filtrage du graphe"= Filtre)
 
 ## export df as pdf
 dfexport <- t(dfnetworklevel)
 
 
-pdf(file= "OUT/dfBipartiEtmun_index.pdf", height = 7, width =10 )
+pdf(file= "OUT/dfBipartiEtmun_index.pdf", height = 7, width =6.5 )
 grid.table(dfexport)
 dev.off()
 
 #### SAVE RDS the em2nw matrix for STEP2
 
 saveRDS(em2nw, "DataProd/Etmun_em2nw.rds")
+saveRDS(emnw, "DataProd/Etmun_emnw.rds")

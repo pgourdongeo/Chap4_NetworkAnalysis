@@ -32,7 +32,7 @@ MembershipEtmun <- readRDS("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/E
 ## Information on associations (for nodes)
 AssoEtmun <- read.csv2("~/Chap4_NetworkAnalysis/Chap4_NetworkAnalysis/Data/ETMUN/BD_ETMUN_OrganizationsWithMembersCities.csv", stringsAsFactors = F)
 
-# Matrix from STEP2
+# Matrix from STEP1
 
 em2nw <- readRDS("DataProd/Etmun_em2nw.rds")
 
@@ -458,9 +458,10 @@ g3<- ggraph(g3df, layout = l) +
   scale_color_continuous(low = "lightgoldenrod1", high = "firebrick3" )+
   scale_edge_width(range = c(0.1, 5)) +
   scale_edge_alpha(range = c(0.05,0.2))+
-  labs(title = "Ensemble des liens",color = "Degré pondéré relatif (%)", 
-  caption = "Poids relatif % (liens) = part de villes en commun observée\npar rapport au maximun théorique.\n \nAlgorithme de spatialisation : lgl")+
-  theme_graph(base_family = 'Helvetica', foreground = "grey60", border = TRUE)
+  labs(title = "Ensemble des liens",color = "Degré pondéré\nrelatif (%)", 
+  caption = "Poids relatif % (liens) = part de villes en commun observée par rapport au maximun théorique. \nAlgorithme de spatialisation : lgl")+
+  theme_graph(base_family = 'Helvetica', foreground = "grey60", border = TRUE)+
+  theme(legend.position = "bottom", legend.text=element_text(angle=30))
 
 g3 
 
