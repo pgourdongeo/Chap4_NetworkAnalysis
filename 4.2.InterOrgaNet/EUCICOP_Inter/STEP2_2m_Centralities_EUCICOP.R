@@ -294,12 +294,12 @@ rm(g)
 
 #Set city name
 
-namecity <- ParticipationEUCICOP %>% select(geonameId, asciiName) %>% distinct()%>% 
+namecity <- ParticipationURBACT %>% select(geonameId, asciiName) %>% distinct()%>% 
   left_join(select(DbCity,geonameId,countryCode,subregion, adminLevel , population, PopAdmin11))
 Centralities[[1]] <- Centralities[[1]] %>% left_join(namecity)
 
 # set names of association
-Centralities[[2]] <- Centralities[[2]] %>% left_join(select(ProjectEUCICOP, Code = ID_PROJECT,  ProjectName = Acronym))
+Centralities[[2]] <- Centralities[[2]] %>% left_join(select(ProjectURBACT, Code = Code_Network,  ProjectName = Name))
 
 ### ==== TOP CENTRALITIES ====
 

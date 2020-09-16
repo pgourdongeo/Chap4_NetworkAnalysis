@@ -741,6 +741,69 @@ ggplot(Top5LouvainThemPlot) +
 
 ggsave( filename = "OUT/LouvainRegional_EUCICOPProject_Theme_em2nw.pdf", width = 8.3, height = 5.8, units = "in" )
 
+### ==== EXPLORE EDGES INTER-COMMUNITIES ====
+
+## get communities 
+Memberem2nw <- readRDS("DataProd/Membership_em2nw_EUCICOP.rds") 
+
+## set communities in the original graph
+
+em2nw.g  <-  set_vertex_attr(em2nw.g  ,"louvain", index = Memberem2nw$name, value = Memberem2nw$louvain)
+
+# Compute crossing
+E(em2nw.g)$crossing <- igraph::crossing(communities = V(em2nw.g)$louvain, graph =  em2nw.g)
+
+
+XCE = which(V(em2nw.g)[ends(em2nw.g, E(em2nw.g))[,1]]$louvain !=
+              V(em2nw.g)[ends(em2nw.g, E(em2nw.g))[,2]]$louvain)
+
+
+Sub_em2nw_intercom <- subgraph.edges(em2nw.g, E(em2nw.g)[XCE], delete.vertices = TRUE)
+# compare sub graph
+
+ecount(Sub_em2nw_intercom)/ecount(em2nw.g) # 17% of edges
+
+vcount(Sub_em2nw_intercom)/vcount(em2nw.g) # 31% of edges
+
+graph.density(Sub_em2nw_intercom) # 0.00058 
+
+
+
+# Add degree and get nodes df
+
+V(Sub_em2nw_intercom)$degree <- degree(Sub_em2nw_intercom, loops = F)
+
+Inter_Louvain_em2nwNodes <- as_data_frame(Sub_em2nw_intercom, what = "vertices")
+
+## Get nodes info
+Inter_Louvain_em2nwNodes <- Inter_Louvain_em2nwNodes %>% left_join(NodesInfos)
+
+CitiesInterLouvain <- Inter_Louvain_em2nwNodes %>% filter(type == TRUE)
+ProjectInterLouvain <- Inter_Louvain_em2nwNodes %>% filter(type == FALSE)
+
+ProjectInterLouvain <- ProjectInterLouvain %>% left_join(select(ProjectEUCICOP, Programme, name = ID_PROJECT))
+
+SumProjectInterLouvain <- ProjectInterLouvain %>% group_by(Programme) %>% 
+  summarise(DegreeSum = sum(degree))
+
+SumProjectInterLouvain <- SumProjectInterLouvain %>% mutate( PctEdges = (DegreeSum/sum(DegreeSum))*100)
+
+TopProgrammeInterLouvain <- SumProjectInterLouvain %>%  top_n(10, DegreeSum)
+sum(TopProgrammeInterLouvain$PctEdges) # 42% of edges
+#Plot top programme by degree of inter communities subgraph
+
+ggplot(TopProgrammeInterLouvain ) + 
+  geom_bar(aes(x= reorder(Programme, desc(PctEdges)), y = PctEdges), stat = "identity", show.legend = FALSE) + 
+  geom_label(aes(label =DegreeSum, x= Programme, y = PctEdges), position = position_stack(0.5), color = "black")+
+  geom_text( mapping = aes(x = Inf, y = Inf, label = paste("Nb Total de liens inter-communautés = ", sum(SumProjectInterLouvain$DegreeSum), sep = "")),
+             hjust   = 1.05,
+             vjust   = 1.2, size = 3)+
+  coord_flip() + 
+  labs(y = "% de liens inter-communautaires", x = "Programme de coopération", 
+       caption = "Note : à partir du sous-graphe comprenant uniquement les liens entre communautés (louvain sur em2nw_1stcomp).\nSources : EUCICOP 2019 ; KEEP Closed Projects 2000-2019 / PG. 2020")
+
+ggsave( filename = "OUT/InterLouvainEdges_EUCICOPProject_TopProgramme_em2nw.pdf", width = 8.3, height = 5.8, units = "in" )
+
 ### ====DUAL PROJECTION ====
 
 ### FUNCTION 

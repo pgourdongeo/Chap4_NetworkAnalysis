@@ -85,6 +85,7 @@ V(em2nwCities.g)$degree <- degree(em2nwCities.g)
 V(em2nwCities.g)$strength <- strength(em2nwCities.g, vids = V(em2nwCities.g), loops = F )
 graph.density(em2nwCities.g) # 0.70
 em2nwDUAL$info_clustering
+summary(V(em2nwCities.g)$degree)
 
 V(emnwCities.g )$degree <- degree(emnwCities.g )
 V(emnwCities.g )$strength <- strength(emnwCities.g , vids = V(emnwCities.g ), loops = F )
@@ -132,7 +133,7 @@ TdgF <- Tdg %>% activate(nodes) %>% filter(D2 > 190) %>% filter(!node_is_isolate
 Nk <- Tdg %>% activate(nodes) %>% filter(D2 > 190) %>% fortify.tbl_graph() %>% nrow()
 
 Nk/vcount(Tdg)
-
+graph.density(TdgF)
 vcount(TdgF)/Nk
 ## Deal with color
 ComVec <- TdgF  %>% activate(nodes) %>% fortify.tbl_graph()%>% select(louvain) %>% deframe() %>% unique() %>%sort()
@@ -376,9 +377,10 @@ ggsave(g4, filename = "OUT/Compl_Asso_em2nwF_ETMUN_deg20.pdf",width = 8.3, heigh
 ## degree
 
 degAssort <- assortativity_degree(em2nwCities.g)
-
+degAssort
 # strength
 degStrength <- assortativity(em2nwCities.g, V(em2nwCities.g)$strength)
+degStrength 
 
 ## Pop 
 NameVertex <- get.vertex.attribute(em2nwCities.g)$name
@@ -390,19 +392,19 @@ em2nwCities.g <-  set_vertex_attr(em2nwCities.g,"PopAdmin11", index = NodesInfos
 g <- delete_vertices(em2nwCities.g, V(em2nwCities.g)$PopAdmin11 < 5000)
 
 popAssort  <- assortativity(g, as.numeric(V(g)$PopAdmin11), directed = FALSE)
-
+popAssort
 ## admin
 
 em2nwCities.g <-  set_vertex_attr(em2nwCities.g,"adminLevel", index = NodesInfos2$name, value = NodesInfos2$adminLevel)
 
 adminAssort <- assortativity_nominal(em2nwCities.g,as.numeric(as.factor(V(em2nwCities.g)$adminLevel)))
-
+adminAssort
 ## Country 
 
 em2nwCities.g <-  set_vertex_attr(em2nwCities.g,"countryCode", index = NodesInfos2$name, value = NodesInfos2$countryCode)
 
 countryAssort <-  assortativity_nominal(em2nwCities.g,as.numeric(as.factor(V(em2nwCities.g)$countryCode)))
-
+countryAssort 
 ## SubRegion 
 
 library(countrycode)
@@ -412,18 +414,18 @@ NodesInfos2$subregion <- countrycode(NodesInfos2$countryCode, "iso2c", "region")
 em2nwCities.g <-  set_vertex_attr(em2nwCities.g,"subregion", index = NodesInfos2$name, value = NodesInfos2$subregion)
 
 subregionAssort <-  assortativity_nominal(em2nwCities.g, as.numeric(as.factor(V(em2nwCities.g)$subregion)))
-
+subregionAssort 
 # EMNW
 
 ## degree
 
 degAssort <- assortativity_degree(emnwCities.g )
-
+degAssort
 V(emnwCities.g)$degree <- degree(emnwCities.g, loops = F )
 # strength
 V(emnwCities.g)$strength <- strength(emnwCities.g, vids = V(emnwCities.g), loops = F )
 degStrength <- assortativity(emnwCities.g , V(emnwCities.g )$strength)
-
+degStrength
 ## Pop 
 NameVertex <- get.vertex.attribute(emnwCities.g )$name
 NodesInfos2 <- NodesInfos %>% filter(name %in% NameVertex)
@@ -435,7 +437,7 @@ emnwCities.g  <-  set_vertex_attr(emnwCities.g ,"PopAdmin11", index = NodesInfos
 g <- delete_vertices(emnwCities.g , V(emnwCities.g )$PopAdmin11 < 5000)
 
 popAssort  <- assortativity(g, as.numeric(V(g)$PopAdmin11), directed = FALSE)
-
+popAssort
 # Pop discrete 
 summary(NodesInfos$PopAdmin11)
 NodesInfos <- NodesInfos %>% filter(!is.na(PopAdmin11))
@@ -459,23 +461,23 @@ emnwCities.g <-  set_vertex_attr(emnwCities.g,"PopClass11", index = NodesInfos2$
 
 popclassAssort <- assortativity_nominal(emnwCities.g, as.numeric(as.factor(V(emnwCities.g)$PopClass11)))
 
-
+popclassAssort
 g <- delete_vertices(emnwCities.g , V(emnwCities.g )$PopAdmin11 < 5000)
 
 popclassAssort <- assortativity_nominal(g, as.numeric(as.factor(V(g)$PopClass11)))
-
+popclassAssort
 ## admin
 
 emnwCities.g <-  set_vertex_attr(emnwCities.g,"adminLevel", index = NodesInfos2$name, value = NodesInfos2$adminLevel)
 
 adminAssort <- assortativity_nominal(emnwCities.g,as.numeric(as.factor(V(emnwCities.g)$adminLevel)))
-
+adminAssort
 ## Country 
 
 emnwCities.g <-  set_vertex_attr(emnwCities.g,"countryCode", index = NodesInfos2$name, value = NodesInfos2$countryCode)
 
 countryAssort <-  assortativity_nominal(emnwCities.g,as.numeric(as.factor(V(emnwCities.g)$countryCode)))
-
+countryAssort
 ## SubRegion 
 
 library(countrycode)
@@ -485,7 +487,7 @@ NodesInfos2$subregion <- countrycode(NodesInfos2$countryCode, "iso2c", "region")
 emnwCities.g <-  set_vertex_attr(emnwCities.g,"subregion", index = NodesInfos2$name, value = NodesInfos2$subregion)
 
 subregionAssort <-  assortativity_nominal(emnwCities.g, as.numeric(as.factor(V(emnwCities.g)$subregion)))
-
+subregionAssort
 ##### Degree distribution
 
 
