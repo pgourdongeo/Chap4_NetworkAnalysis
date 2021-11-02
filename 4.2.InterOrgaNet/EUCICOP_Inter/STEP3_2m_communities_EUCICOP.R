@@ -491,6 +491,7 @@ n<- length(unique(geoLouvainTop$louvain))
 library(randomcoloR)
 
 palette <- distinctColorPalette(n)
+palette <- randomColor(count = n , luminosity = "bright")
 
 names(palette) <- sort(as.numeric(unique(geoLouvainTop$louvain)))
 
@@ -508,8 +509,14 @@ ggplot()+
   facet_wrap(~ louvain)+
   geom_text( data    = Nlouvain,
     mapping = aes(x = Inf, y = Inf, label = paste("N = ", Ncities, sep = "")),
-    hjust   = 1.2,
-    vjust   = 2, size = 3)
+    hjust   = 1.3,
+    vjust   = 2, size = 3)+
+  theme(panel.grid = element_blank(), 
+        line = element_blank(), 
+        rect = element_blank(), 
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank())
 
 ggsave( filename = "OUT/Louvain_EUCICOPCities_FacetMap_em2nw.pdf", width = 11.7, height = 8.3, units = "in" )
 
@@ -987,7 +994,7 @@ saveRDS(emnwDUAL, "DataProd/DualProj_emnw_eucicop.rds")
 ##EXPLORE COMMUNITIES OF EM2NW DUAL PROJECTION
 
 # Comparing classification for cities
-
+em2nwDUAL <- readRDS("DataProd/DualProj_em2nw_eucicop.rds")
 Memberem2nw <- readRDS("DataProd/Membership_em2nw_EUCICOP.rds") 
 Memberem2nwCities <- Memberem2nw %>% filter(type ==TRUE)
 Memberem2nwCities <- Memberem2nwCities %>% left_join(NodesInfos)
@@ -1136,7 +1143,7 @@ summary(TopLouvainNCities$N)
 
 
 library(ggalt)
-library(spats)
+library(SpATS)
 test <- ggplot()+
   geom_sf(data = sfEU, fill = "#bfbfbf", color = "white", size = 0.5) +
   geom_sf(data =Memberem2nwCitiesDUAL_sf , aes(color = louvainNW), alpha= 0, show.legend = FALSE, size =0.1)+
