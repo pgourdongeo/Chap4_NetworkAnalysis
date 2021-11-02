@@ -924,6 +924,360 @@ test+
   geom_density_2d(data = MemberemnwCitiesDUAL_sf, aes(x = X, y = Y, color = louvainNW)) 
 
 
+################################### ===== Reconstructing the network for the 3 phase ====
+## four configurations of network (3 phases and all phases)
+
+# All period
+emnwDUAL <- readRDS("DataProd/DualProj_emnw_urbact.rds")
+gCities <-emnwDUAL$igraph_objects[[4]]
+gCitiesTd <- as_tbl_graph(gCities)
+#Phase I
+emnwDUAL_I <- DblDUALPROJECTION(emnw1)
+gCitiesI <- emnwDUAL_I$igraph_objects[[4]]
+gCitiesITd <- as_tbl_graph(gCitiesI)
+#Phase II
+emnwDUAL_II <- DblDUALPROJECTION(emnw2)
+gCitiesII <- emnwDUAL_II$igraph_objects[[4]]
+gCitiesIITd <- as_tbl_graph(gCitiesII)
+#Phase III
+emnwDUAL_III <- DblDUALPROJECTION(emnw3)
+gCitiesIII <- emnwDUAL_III$igraph_objects[[4]]
+gCitiesIIITd <- as_tbl_graph(gCitiesIII)
+Sweight= 1
+
+Sweightall = 2
+### Filter weight 1
+# Label
+NodesInfos <- NodesInfos %>% mutate(label = recode(label, "Mestre" = "Venice"))
+
+gCitiesTd <- gCitiesTd %>% activate(edges)%>% filter(weight > Sweightall) %>% activate(nodes) %>%  filter(!node_is_isolated()) %>%
+  left_join(NodesInfos) %>% mutate(louvainFilter = group_louvain(weights = weight), degreeFilterNW = centrality_degree(weights = NULL)) %>%
+  activate(edges) %>% rename( "Poids\n(nb de projets en commun)" = weight)
+
+
+gCitiesITd <- gCitiesITd %>% activate(edges)%>% filter(weight > Sweight) %>% activate(nodes) %>%  filter(!node_is_isolated()) %>%
+  left_join(NodesInfos) %>% mutate(louvainFilter = group_louvain(weights = weight), degreeFilterNW = centrality_degree(weights = NULL)) %>%
+  activate(edges) %>% rename( "Poids\n(nb de projets en commun)" = weight)
+
+
+gCitiesIITd <- gCitiesIITd %>% activate(edges)%>% filter(weight > Sweight) %>% activate(nodes) %>%  filter(!node_is_isolated()) %>%
+  left_join(NodesInfos) %>% mutate(louvainFilter = group_louvain(weights = weight), degreeFilterNW = centrality_degree(weights = NULL)) %>%
+  activate(edges) %>% rename( "Poids\n(nb de projets en commun)" = weight)
+
+
+gCitiesIIITd <- gCitiesIIITd %>% activate(edges)%>% filter(weight > Sweight) %>% activate(nodes) %>%  filter(!node_is_isolated()) %>%
+  left_join(NodesInfos) %>% mutate(louvainFilter = group_louvain(weights = weight), degreeFilterNW = centrality_degree(weights = NULL)) %>%
+  activate(edges) %>% rename( "Poids\n(nb de projets en commun)" = weight)
+
+
+## Max degree I II and III
+
+degMax <- max(V(gCitiesITd)$degreeFilterNW, V(gCitiesIITd)$degreeFilterNW, V(gCitiesIIITd)$degreeFilterNW)
+
+degMin <- min(V(gCitiesITd)$degreeFilterNW, V(gCitiesIITd)$degreeFilterNW, V(gCitiesIIITd)$degreeFilterNW)
+
+weightMax <- max(E(gCitiesITd)$`Poids\n(nb de projets en commun)`,
+                 E(gCitiesIITd)$`Poids\n(nb de projets en commun)`, 
+                 E(gCitiesIIITd)$`Poids\n(nb de projets en commun)`)
+
+weightMin <- min(E(gCitiesITd)$`Poids\n(nb de projets en commun)`,
+                 E(gCitiesIITd)$`Poids\n(nb de projets en commun)`, 
+                 E(gCitiesIIITd)$`Poids\n(nb de projets en commun)`)
+# change weight name (problem because impossible to change width lab in ggraph)
+
+# FilterG <-  FilterG %>% activate(edges) %>% rename( "Poids\n(nb villes membres\nen commun)" = weight)
+
+## Plotting networks
+
+
+g1<-ggraph(gCitiesITd, layout = 'fr') + 
+  geom_edge_hive( aes(width = `Poids\n(nb de projets en commun)`), alpha = 0.3) +
+  geom_node_point(aes(size = degreeFilterNW, color = as.character(louvainFilter))) + 
+  geom_node_text(aes(label = label),repel = TRUE, size = 3) +
+  scale_size(range = c(1,8), limits = c(degMin, degMax))+
+  scale_edge_width(range = c(0.5, 3), limits = c(weightMin, weightMax))+
+  labs(title = "Phase I (2003 - 2006)",
+       caption = "Algorithme de spatialisation : fr\nSous-graphe poids supérieur à 1",
+       size =  "Degré non pondéré", color = "Communautés (louvain)")+
+    theme_graph(base_family = 'Helvetica')  +
+    theme(legend.position="bottom", legend.box = "vertical") + 
+  annotate("label",
+           label = paste("Densité : ", round(graph.density(gCitiesITd),3),
+                         "\nNb Villes : ", vcount(gCitiesITd),
+                         "\nNb liens : ", ecount(gCitiesITd),
+                         "\nNb composantes : ", components(gCitiesITd)$no, 
+                         "\nTransitivité : ", round(transitivity(gCitiesITd, type = "undirected", weights = NULL),3), 
+                         "\nModularité : ", round(modularity(gCitiesITd, membership = V(gCitiesITd)$louvainFilter),2),
+                         sep = ""), 
+           x = Inf, 
+           y = Inf,
+           hjust = 1,
+           vjust =1,
+           alpha =0.4,
+           size = 2.5)
+
+g1 
+
+palcol <- distinctColorPalette(length(unique(V(gCitiesIITd)$louvainFilter)))
+
+g2<-ggraph(gCitiesIITd, layout = 'fr') + 
+  geom_edge_hive( aes(width = `Poids\n(nb de projets en commun)`), alpha = 0.3) +
+  geom_node_point(aes(size = degreeFilterNW, color = as.character(louvainFilter))) + 
+  geom_node_text(aes(label = label),repel = TRUE, size = 3) +
+  scale_size(range = c(1,8), limits = c(degMin, degMax))+
+  scale_color_manual(values = palcol)+
+  scale_edge_width(range = c(0.5, 3), limits = c(weightMin, weightMax))+
+  labs(title = "Phase II (2007 - 2013)",
+       caption = "Algorithme de spatialisation : fr\nSous-graphe poids supérieur à 1",
+       size =  "Degré non pondéré", color = "Communautés (louvain)")+
+  theme_graph(base_family = 'Helvetica')  +
+  theme(legend.position="bottom", legend.box = "vertical") +
+  annotate("label",
+           label = paste("Densité : ", round(graph.density(gCitiesIITd),3),
+                         "\nNb Villes : ", vcount(gCitiesIITd),
+                         "\nNb liens : ", ecount(gCitiesIITd),
+                         "\nNb composantes : ", components(gCitiesIITd)$no, 
+                         "\nTransitivité : ", round(transitivity(gCitiesIITd, type = "undirected", weights = NULL),3), 
+                         "\nModularité : ", round(modularity(gCitiesIITd, membership = V(gCitiesIITd)$louvainFilter),2),
+                         sep = ""), 
+           x = Inf, 
+           y = Inf,
+           hjust = 1,
+           vjust =1,
+           alpha =0.4,
+           size = 2.5)
+g2 
+
+
+
+
+palcol <- distinctColorPalette(length(unique(V(gCitiesIIITd)$louvainFilter)))  
+g3<-ggraph(gCitiesIIITd, layout = 'fr') + 
+  geom_edge_hive( aes(width = `Poids\n(nb de projets en commun)`), alpha = 0.3) +
+  geom_node_point(aes(size = degreeFilterNW, color = as.character(louvainFilter))) + 
+  geom_node_text(aes(label = label),repel = TRUE, size = 3) +
+  scale_size(range = c(1,8), limits = c(degMin, degMax))+
+  scale_edge_width(range = c(0.5, 3), limits = c(weightMin, weightMax))+
+  scale_color_manual(values = palcol)+
+  labs(title = "Phase III (2014 - 2020)",
+       caption = "Algorithme de spatialisation : fr\nSous-graphe poids supérieur à 1",
+       size =  "Degré non pondéré", color = "Communautés (louvain)")+
+  theme_graph(base_family = 'Helvetica')  +
+  theme(legend.position="bottom", legend.box = "vertical") +
+  annotate("label",
+           label = paste("Densité : ", round(graph.density(gCitiesIIITd),3),
+                         "\nNb Villes : ", vcount(gCitiesIIITd),
+                         "\nNb liens : ", ecount(gCitiesIIITd),
+                         "\nNb composantes : ", components(gCitiesIIITd)$no, 
+                         "\nTransitivité : ", round(transitivity(gCitiesIIITd, type = "undirected", weights = NULL),3),
+                         "\nModularité : ", round(modularity(gCitiesIIITd, membership = V(gCitiesIIITd)$louvainFilter),2),
+                         sep = ""), 
+           x = Inf, 
+           y = Inf,
+           hjust = 1,
+           vjust =1,
+           alpha =0.4,
+           size = 2.5)
+g3 
+
+gall<-ggraph(gCitiesTd, layout = 'fr') + 
+  geom_edge_hive( aes(width = `Poids\n(nb de projets en commun)`, alpha =  `Poids\n(nb de projets en commun)`))+
+  geom_node_point(aes(size = degreeFilterNW, color = as.character(louvainFilter))) + 
+  geom_node_text(aes(label = label),repel = TRUE, size = 3) +
+  scale_size(range = c(1,8))+
+  scale_edge_alpha(range = c(0.1, 0.5))+
+  scale_edge_width(range = c(0.5, 3))+
+  labs(title = "Ensemble des phase (2003-2019)",
+       caption = "Algorithme de spatialisation : fr\nSous-graphe poids supérieur à 2",
+       size =  "Degré non pondéré", color = "Communautés (louvain)")+
+  theme_graph(base_family = 'Helvetica')  +
+  theme(legend.position="bottom", legend.box = "horizontal")+
+  guides(color=guide_legend(nrow=2), size=guide_legend(nrow=2))
+gall 
+
+## Grid with two plots
+
+grid1 <- g1 + g2 + plot_layout(ncol = 1, heights = c(1.5, 2))
+
+#save and export
+
+ggsave(g1, filename = "OUT/URBACTLouvain_PhaseI_weight2.pdf", width = 8.3, height = 8.3, units = "in" )
+
+ggsave(g2, filename = "OUT/URBACTLouvain_PhaseII_weight2.pdf", width = 8.3, height = 8.3, units = "in" )
+
+ggsave(g3, filename = "OUT/URBACTLouvain_PhaseIII_weight2.pdf", width = 8.3, height = 8.3, units = "in" )
+
+## basic properties
+# ordre et taille
+vcount(gCitiesITd)
+ecount(gCitiesITd)
+
+vcount(gCitiesIITd)
+ecount(gCitiesIITd)
+
+vcount(gCitiesIIITd)
+ecount(gCitiesIIITd)
+
+# density
+graph.density(gCitiesITd)
+gCitiesITd
+
+# check density
+(183*2)/ (65*64)
+graph.density(gCitiesIITd)
+
+graph.density(gCitiesIIITd)
+modularity(gCitiesITd, membership = V(gCitiesITd)$louvainFilter)
+
+# N components
+components(gCitiesITd)$no
+components(gCitiesIITd)$no
+components(gCitiesIIITd)$no
+
+# transitivity
+transitivity(gCitiesITd, type = "undirected", weights = NULL)
+transitivity(gCitiesIITd, type = "undirected", weights = NULL)
+transitivity(gCitiesIIITd, type = "undirected", weights = NULL)
+
+
+### Cities that are in the 3 subgraph
+
+NodesI <- gCitiesITd %>% activate(nodes) %>% fortify.tbl_graph()
+
+NodesII <- gCitiesIITd %>% activate(nodes) %>% fortify.tbl_graph()
+
+NodesIII <- gCitiesIIITd %>% activate(nodes) %>% fortify.tbl_graph()
+
+
+## Regional structure of communities
+RegionLouvainI<-table(NodesI$louvainFilter,NodesI$subregion)
+prop.table(RegionLouvainI,1)
+
+RegionLouvainII <- table(NodesII$louvainFilter,NodesII$subregion)
+prop.table(RegionLouvainII,1)
+
+
+table(NodesIII$louvainFilter) #  check communities 1, 2, 3, 4, and 5
+RegionLouvainIII <- table(NodesIII$louvainFilter,NodesIII$subregion)
+prop.table(RegionLouvainIII,1)
+
+
+
+## Admin status structure of communities
+AdminLouvainI<-table(NodesI$louvainFilter,NodesI$adminLevel)
+prop.table(AdminLouvainI,1)
+
+AdminLouvainII <- table(NodesII$louvainFilter,NodesII$adminLevel)
+prop.table(AdminLouvainII,1)
+
+AdminLouvainIII <- table(NodesIII$louvainFilter,NodesIII$adminLevel)
+prop.table(AdminLouvainIII,1)
+
+### change in "backcloth" == cities that appear and disappear between each sub-graph
+
+Nodes3sub <- bind_rows(NodesI,NodesII, NodesIII, .id = "Phase")
+
+CitiesPresence <- Nodes3sub %>% group_by(label, Phase) %>% summarise(Nphase = n())%>% ungroup %>% 
+  mutate(Phase = paste0("Phase_", Phase))%>%
+  pivot_wider(names_from = Phase, values_from = Nphase) %>% 
+  select(label, Phase_1, Phase_2, Phase_3) %>% 
+  mutate_if(is.numeric, ~replace_na(., 0)) %>%
+  mutate(Totpresence = rowSums(across(where(is.numeric)))) %>%
+  mutate(Transition1to2 = case_when(Phase_1 == 1 & Phase_2 == 1 ~ "Remain",
+                                    Phase_1 == 0 & Phase_2 == 1 ~ "Appear",
+                                    Phase_1 == 1 & Phase_2 == 0 ~ "Disappear",
+                                    TRUE ~ "Still Missing"),
+         Transition2to3 = case_when(Phase_2 == 1 & Phase_3 == 1 ~ "Remain",
+                                    Phase_2 == 0 & Phase_3 == 1 ~ "Appear",
+                                    Phase_2 == 1 & Phase_3 == 0 ~ "Disappear",
+                                    TRUE ~ "Still Missing"))
+
+CitiesPresence <- CitiesPresence %>% left_join(select(NodesInfos, label, Country,subregion, adminLevel, population, PopAdmin11))
+
+CitiesPresence$population <- as.numeric(CitiesPresence$population)
+CitiesPresence <- CitiesPresence %>% arrange(Phase_3, population)
+# n cities with less than 100 k inh
+CitiesPresence %>% filter(Phase_1 == 1 & PopAdmin11 < 100000) # phase II = 10 (pop)  and 8 (PopAdmin11)
+
+CitiesPresence %>% filter(Phase_2 == 1 & PopAdmin11 < 100000) # phase II = 17(pop) and 18 (PopAdmin11)
+
+smc<-CitiesPresence %>% filter(Phase_3 == 1 & population < 100000)  # phase III = 26 (pop) and 20 (PopAdmin11)
+  
+## Count change in backcloth between phases
+table(CitiesPresence$Phase_3, CitiesPresence$subregion)
+préstable(CitiesPresence$Phase_3, CitiesPresence$adminLevel)
+
+PhaseItoII <- table(CitiesPresence$Transition1to2)
+
+PhaseIItoIII <- table(CitiesPresence$Transition2to3)
+
+table(CitiesPresence$Transition1to2, CitiesPresence$subregion)
+table(CitiesPresence$Transition2to3, CitiesPresence$subregion)
+CitiesPresenceAlltime <- CitiesPresence %>% filter(Totpresence == 3)
+  
+  
+  
+### Check assortativity
+g <- as.igraph(gCitiesIIITd) 
+
+assortativity_degree(g)
+
+
+# strength
+V(g)$strength <- strength(g, vids = V(g), loops = F )
+degStrength <- assortativity(g , V(g)$strength)
+
+## Pop 
+
+
+popAssort  <- assortativity(g, V(g)$population, directed = FALSE)
+
+# Pop discrete 
+summary(NodesInfos$PopAdmin11)
+NodesInfos <- NodesInfos %>% filter(!is.na(PopAdmin11))
+labelClass <- c( "4.Small City", "3.Medium-sized Small City","2.Large City",  "1.Very Large City")
+
+
+
+cesDonnees <- NodesInfos$PopAdmin11
+min<-min(cesDonnees)
+max<- max(cesDonnees)
+valBreaks <- c(min, 50000,150000, 500000, max)
+
+NodesInfos$ClassPop11 <- cut(cesDonnees,
+                             breaks = valBreaks,
+                             labels = labelClass,
+                             include.lowest = TRUE,
+                             right= FALSE)
+
+NameVertex <- V(g)$name
+NodesInfos2 <- NodesInfos %>% filter(name %in% NameVertex)
+g <-  set_vertex_attr(g,"PopClass11", index = NodesInfos2$name, value = NodesInfos2$ClassPop11)
+
+
+
+Matrixg <- get.adjacency(g) %>% as.matrix()
+library(assortnet)
+NameMatrix <- data.frame(name= rownames(Matrixg)) %>% left_join(select(NodesInfos, name, ClassPop11))
+assortment.discrete(Matrixg ,NameMatrix$ClassPop11 ,weighted=TRUE)
+
+## admin
+
+
+adminAssort <- assortativity_nominal(g,as.numeric(as.factor(V(g)$adminLevel)))
+
+Matrixg <- get.adjacency(g) %>% as.matrix()
+
+NameMatrix <- data.frame(name= rownames(Matrixg)) %>% left_join(select(NodesInfos, name, adminLevel))
+assortment.discrete(Matrixg ,NameMatrix$adminLevel ,weighted=FALSE)
+
+## SubRegion 
+subregionAssort <-  assortativity_nominal(g, as.numeric(as.factor(V(g)$subregion)))
+Matrixg <- get.adjacency(g) %>% as.matrix()
+NameMatrix <- data.frame(name= rownames(Matrixg)) %>% left_join(select(NodesInfos, name, subregion))
+assortment.discrete(Matrixg ,NameMatrix$subregion ,weighted=FALSE)
+
+
 #################################################################################################################################################"
 
 
@@ -1154,7 +1508,7 @@ ProjectURBACT %>% group_by(Start) %>% summarise(N= n())
 # regroup 2007 and 2010 and 2016
 
 library(questionr)
-irec(ParticipationURBACT)
+# irec(ParticipationURBACT)
 
 ## Recodage de ParticipationURBACT$Start en ParticipationURBACT$Start_rec
 ParticipationURBACT$Start_rec <- as.character(ParticipationURBACT$Start)
@@ -1224,8 +1578,57 @@ kable(TransitionRate, booktabs = T, "latex") %>%
 
 #####2.3.2 / OM CAH
 
+### filtrage des séquences ne comprenant qu'une seule participation.
+ind2remove <- PartUrbactPhase %>% 
+  pivot_longer(-geonameId, names_to = "period", values_to = "state") %>% 
+  group_by(geonameId, state) %>% 
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = "state", values_from = "n") %>% 
+  arrange(geonameId) %>% 
+  filter(`Aucune Participation` == 6 & Partner == 1) %>% 
+  select(geonameId) %>% 
+  deframe
+
+PartUrbactPhase2 <- PartUrbactPhase %>% filter(!geonameId %in% ind2remove)
+
+CityStat.seq2 <- seqdef(PartUrbactPhase2, var = 2:8)
+colnames(CityStat.seq2)
+Date <- c("0306","0708","0910","13","1516","18", "19")
+Date <- c("2003-\n2006", "2007-\n2008", "2009-\n2010" ,"2013",
+          "2015-\n2016" ,"2018", "2019" )
+
+colnames(CityStat.seq2) <- Date
+
+seqstatl(CityStat.seq2)
+seqdim(CityStat.seq2)
 
 
+pdf(file = "OUT/dplot_URBACT_seqfilter.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+seqdplot(CityStat.seq2, with.legend = TRUE, axes = TRUE)
+dev.off()
+
+
+
+
+
+pdf(file = "OUT/fplot_URBACT_seqfilter.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+seqfplot(CityStat.seq2,  with.legend = T, border = NA)
+dev.off()
+
+# Decription des classes avec la frequence en SPS
+
+seqtab(CityStat.seq2, tlim = 1:10, format="SPS")
+
+# Transition rate
+
+TransitionRate <- seqtrate(CityStat.seq2)
+TransitionRate
+
+library(kableExtra)
+kable(TransitionRate, booktabs = T, "latex") %>%
+  # column_spec(column = c(3:11), width = "2cm") %>% 
+  kable_styling(position = "center", latex_options = "striped")
 ########  CAH
 
 
@@ -1233,13 +1636,13 @@ kable(TransitionRate, booktabs = T, "latex") %>%
 #Definition des couts 
 ##(cout constant pour LevenshteinII et Trate pour Dynamic Hamming)
 
-couts <- seqsubm(CityStat.seq,method="CONSTANT", cval=1)
-#couts <- seqsubm(CityStat.seq,method="TRATE")
+# couts <- seqsubm(CityStat.seq2,method="CONSTANT", cval=50)
+couts <- seqsubm(CityStat.seq,method="TRATE")
 
 #matrice de distances_
 ##(changer Indel ou sm selon la distance utilisee : LevenshteinII ou Hamming)
 
-seq.om <- seqdist(CityStat.seq, method="OM", indel=1, sm=couts)
+seq.om <- seqdist(CityStat.seq2, method="OM", indel=1, sm=couts)
 
 # classification choix du nb de classes
 
@@ -1268,15 +1671,15 @@ seq.part <- factor(seq.part,labels=paste("Classe",1:nbcl,sep='.'))
 
 
 
-pdf(file = "OUT/dplot_URBACT_seqCAH.pdf", width = 8.3, height = 8.3, pagecentre = FALSE)
-seqplot(CityStat.seq, group=seq.part, type = "d")
+pdf(file = "OUT/dplot_URBACT_seqCAH_filter.pdf", width = 8.3, height = 8.3, pagecentre = FALSE)
+seqplot(CityStat.seq2, group=seq.part, type = "d")
 dev.off()
 
 ### index plot
 
 #ordre <- cmdscale(as.dist(seq.om),k=1)
 #ordre <- sort.list 
-seqiplot(CityStat.seq, group=seq.part,sortv="from.start", title = "Index plot",
+seqiplot(CityStat.seq2, group=seq.part,sortv="from.start", title = "Index plot",
          tlim=0, space=0, border=NA, with.legend=T, yaxis=FALSE )
 
 # distance moyenne des sequences au centre de la classe
@@ -1292,18 +1695,113 @@ meanDistClass <- round(aggregate(disscenter(as.dist(seq.om), group=seq.part),
 #
 
 
-pdf(file = "OUT/fplot_URBACT_seqCAH.pdf", width = 8.3, height = 8.3, pagecentre = FALSE)
-seqfplot(CityStat.seq, group=seq.part,  with.legend=T, border = NA)
+pdf(file = "OUT/fplot_URBACT_seqCAH_filter.pdf", width = 8.3, height = 8.3, pagecentre = FALSE)
+seqfplot(CityStat.seq2, group=seq.part,  with.legend=T, border = NA)
 dev.off()
 
 str(seq.part)
 levels(seq.part)
 # etat modal de chaque classe
 
-mplotCAH <- seqmsplot(CityStat.seq, group=seq.part, with.legend=T, main ="Profil Modal")
+ seqmsplot(CityStat.seq2, group=seq.part, with.legend=T, main ="Profil Modal")
 
 # entropie par classe
 
-seqHtplot(CityStat.seq, group=seq.part, with.legend=T, main = "Entropie intraclasse")
+seqHtplot(CityStat.seq2, group=seq.part, with.legend=T, main = "Entropie intraclasse")
+
+## get the typo
+PartUrbactPhase2$OMclustersCAH <- seq.part
+PartUrbactPhase2$OMclustersCAH <- as.integer(PartUrbactPhase2$OMclustersCAH)
 
 
+OMclusterLabel <- data.frame(OMclustersCAH = unique(PartUrbactPhase2$OMclustersCAH), 
+                             OMclustLabel = c("1. Lead Partner en début de séquence,\nparticipations irrégulières", 
+                                              "2. Etats de Lead Partner majoritaires\net consécutifs sur l'ensemble de la séquence",
+                                              "3. Etat de Lead Partner en fin de séquence,\nparticipations irrégulières",
+                                              "4. Participations consécutives et majoritaires",
+                                              "5. Participations consécutives\nou répétées en fin de séquence",
+                                              "6. Deux ou trois participation\nen milieu de séquence",
+                                              "7. Participations en début de séquence,\npuis participations irrégulières"))
+
+PartUrbactPhase2 <- PartUrbactPhase2 %>% left_join(OMclusterLabel)
+### MAP and Esplore Cities Dual Proj Louvain NW (normalized Weighted)
+
+
+
+
+MemberemnwCities <- Memberemnw %>% filter(type ==TRUE)
+MemberemnwCities <- MemberemnwCities %>% left_join(NodesInfos)
+
+MemberemnwCities <- MemberemnwCities %>%filter(!is.na(lng_GN))
+
+MemberemnwCities_sf <- st_as_sf(MemberemnwCities, coords = c("lng_GN", "lat_GN"), crs = 4326) %>% st_transform(3035)
+
+MemberemnwCities_sf  <- MemberemnwCities_sf  %>%
+  mutate(population = as.numeric(population)) %>% 
+  mutate(PopAdmin11 = ifelse(is.na(PopAdmin11), population, PopAdmin11))
+
+## add OM typo
+MemberemnwCities_sf <- MemberemnwCities_sf %>% left_join(select(PartUrbactPhase2,name = geonameId, OMclustersCAH, OMclustLabel))
+
+MemberemnwCities_sf_OM <- MemberemnwCities_sf %>% filter(!is.na(OMclustersCAH)) 
+
+
+
+library(randomcoloR)
+library(RColorBrewer)
+
+paletteDUAL <- distinctColorPalette(7)
+
+paletteDUAL <- brewer.pal(n = 7, name = "Set2")
+names(paletteDUAL) <- unique(MemberemnwCities_sf_OM$OMclustLabel)
+
+## Map 
+
+
+
+myScaleBar <- data.frame(X = c(c(st_bbox(rec)[3]-900000), c(st_bbox(rec)[3]-400000)),
+                         Y = c(c(st_bbox(rec)[2]+200000), c(st_bbox(rec)[2]+200000)))
+
+s <-summary(MemberemnwCities_sf_OM$PopAdmin11)
+s[[1]]
+bks <- c(2500, 50000, 150000, 300000,1000000, 9000000)
+lbs <-  c("2 500" ,"50 000","150 000",  "300 000",  "1M", "9 M" )
+palcol <- paletteDUAL
+
+citiesMembersOM <- ggplot() + 
+  geom_sf(data = sfEU, fill = "#bfbfbf", color = "white", size = 0.5) +
+  geom_sf(data = MemberemnwCities_sf_OM ,
+          mapping = aes(size = PopAdmin11,  colour = OMclustLabel), show.legend = "point", alpha = 0.9) +
+  scale_color_manual( values = palcol)+
+  scale_size(name = "Population Administrative 2011",
+             breaks = bks,
+             labels = lbs,
+             range = c(0.05, 10))+
+  annotate("text", label = "Distance utilisée pour la classification : Levenshtein I.\nSources : EUCICOP 2019 ; BD URBACT / PG. 2020",
+           size = 2.2, 
+           hjust = 1,
+           x = c(st_bbox(rec)[3]), y = c(st_bbox(rec)[2]-130000)) +
+  labs(x = "", y = "") +
+  geom_sf_text(data = MemberemnwCities_sf_OM %>% filter(PopAdmin11 > 300000), aes(label = label), size = 2.2, color = "#4d4d4d",
+               check_overlap = TRUE) +
+  geom_line(data = myScaleBar, aes(x = X, y = Y), size = 0.5, color = "#333333") +
+  annotate("text", label = "500 km", size = 2.5, color = "#333333", hjust = 0,
+           x = c(st_bbox(rec)[3]-800000), y = c(st_bbox(rec)[2]+280000)) +
+  geom_sf(data = rec, fill = NA, color = "ivory4", size = 0.5) +
+  coord_sf(crs = 3035, datum = NA,
+           xlim = st_bbox(rec)[c(1,3)],
+           ylim = st_bbox(rec)[c(2,4)]) + 
+  labs(color = "Types de séquences de participation\ndans le programme URBACT\nentre 2000 et 2019\n(Optimal Matching)") +
+  guides(colour=guide_legend(ncol=1),size=guide_legend(ncol=2) )+
+  theme_void() +
+  theme(legend.position =  c(0.20, 0.60), 
+        legend.title = element_text(size = 9),
+        legend.text = element_text(size = 7.5))
+
+
+
+pdf(file = "OUT/URBACTcities_OM_CAH7.pdf", width = 8.3, height = 5.8, pagecentre = FALSE)
+citiesMembersOM
+dev.off()
+
+table(MemberemnwCities_sf_OM$OMclustersCAH, MemberemnwCities_sf_OM$adminLevel)

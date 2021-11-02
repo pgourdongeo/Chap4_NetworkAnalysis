@@ -116,9 +116,6 @@ AnovaPlot <- function(df, varx, vary, tx, ty, source){
     geom_segment(data = avgSegment, aes(x = XMIN, xend = XMAX, y = YMIN, yend = YMAX), color = "grey40", size = 2) +
     geom_segment(data = df, aes(x = JIT, xend = JIT, y = YMIN, yend = VAR), color = "grey40", alpha = 0.5) +
     geom_point(data = df, aes(JIT, VAR, color = ID), show.legend = FALSE) +
-    geom_label_repel(data = df, 
-                     aes(JIT, VAR, label = CountryName), # not generalized
-                     na.rm = TRUE, nudge_y = 0.05, color = "black", size = 2.5) +
     scale_color_manual(values = colPal) +
     scale_x_continuous(name = tx, breaks = seq(1, length(groupMean), 1), labels = xLevels) +
     scale_y_continuous(name = ty) +
