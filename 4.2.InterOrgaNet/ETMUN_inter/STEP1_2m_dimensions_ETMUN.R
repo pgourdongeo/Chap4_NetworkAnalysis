@@ -39,6 +39,11 @@ edgelist <- MembershipEtmun %>%
   summarise(weight = n()) # some weight > 1 because several members of an association are (representing the same city) in the same locality 
 #(eg. Municipality of Barcelona + Metropolitan area of Barcelona)
 
+##Pct edges with weight > 1 
+
+edgeSup1 <- edgelist %>% filter(weight > 1)
+nrow(edgeSup1)/ nrow(edgelist)
+
 edgelistnw <- edgelist %>% mutate(weight = 1) # edgelist non weighted (transform weight > 1)
 
 ## Convert edgelist into a matrix

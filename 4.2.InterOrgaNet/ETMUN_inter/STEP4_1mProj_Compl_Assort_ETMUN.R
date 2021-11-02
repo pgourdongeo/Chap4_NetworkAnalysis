@@ -195,7 +195,7 @@ Tdg <- Tdg %>% activate(nodes) %>% left_join(Member2 , by = "name")
 
 # Filter graph to get  degree
 
-TdgF <- Tdg %>% activate(nodes) %>% filter(D2 > 6) %>% filter(!node_is_isolated())
+TdgF <- Tdg %>% activate(nodes) %>% filter(D2 > 6) %>% filter(!node_is_isolated()) %>% mutate(degreeCompl  = centrality_degree())
 
 Nk <- Tdg %>% activate(nodes) %>% filter(D2 > 6) %>% fortify.tbl_graph() %>% nrow()
 
@@ -228,10 +228,21 @@ g2<-ggraph(manual_layout) +
        caption = "Complément du graphe  em2nwF (villes-villes):\nchaque lien représente l'absence de lien direct.\nSpatialisation : coordonnées géographiques\nSources : ETMUN 2019/ PG 2020")
 
 
+g2bis<-ggraph(TdgF, layout = "kk") + 
+  geom_edge_hive(alpha = 0.2, start_cap = circle(3, 'mm'),
+                 end_cap = circle(3, 'mm'))+
+  geom_node_point( aes(color = as.character(fgreedy), size = degreeCompl), alpha= 0.7  )+ 
+  geom_node_text(aes(label = label),repel = TRUE, size = 3)+
+  scale_color_manual(values = pal, breaks = ComVec)+
+  scale_size(range = c(2,12))+
+  labs(x = "long", y = "lat",
+       color = "Communautés dans le biparti\n(Fast Greedy sur em2nwF)", size = "Degré \n(dans le complément du graphe)",
+       caption = "Complément du graphe  em2nwF (villes-villes):\nchaque lien représente l'absence de lien direct.\nSpatialisation : kk\nSources : ETMUN 2019/ PG 2020")
+
 
 ggsave(g1bis, filename = "OUT/Compl_Cities_em2nw_ETMUN_deg6.pdf",width = 8.3, height = 5.8)
 
-ggsave(g2, filename = "OUT/Compl_Cities_em2nwF_ETMUN_deg6.pdf",width = 8.3, height = 5.8)
+ggsave(g2bis, filename = "OUT/Compl_Cities_em2nwF_ETMUN_deg6_KK.pdf",width = 8.3, height = 8.3)
 
 
 ### ==== 1-mode Associations ====
